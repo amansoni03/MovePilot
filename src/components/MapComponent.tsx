@@ -1,0 +1,172 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import { useApp, Route, Vehicle } from '@/context/AppContext';
+import { Bus, User, Users, MapPin, Gauge, Clock, ShieldAlert } from 'lucide-react';
+
+// Custom icons using Leaflet divIcon
+const createCustomMarker = (bus: Vehicle, route: Route | undefined) => {
+  let color = 'bg-blue-600'; // Scheduled / Inactive
+  let ring = 'ring-blue-100';
+  let pulseClass = '';
+
+  if (bus.status === 'emergency') {
+    color = 'bg-red-600';
+    ring = 'ring-red-200';
+    pulseClass = 'bus-pulse-emergency';
+  } else if (bus.status === 'active') {
+    if (route && route.status === 'running') {
+      const isDelayed = route.stops.some(s => s.status === 'pending' && Math.random() < 0.1); // simulated delay check
+      // For this demo, let's make BUS 12 delayed if it's not breakdown, or check if speed is high
+      if (bus.busNumber === 'BUS 14' || bus.currentSpeed > 60) {
+        color = 'bg-amber-500';
+        ring = 'ring-amber-100';
+      } else {
+        color = 'bg-emerald-500';
+        ring = 'ring-emerald-100';
+        pulseClass = 'bus-pulse-active';
+      }
+    }
+  } else if (bus.status === 'maintenance') {
+    color = 'bg-slate-500';
+    ring = 'ring-slate-100';
+  }
+
+  const html = `
+    <div class="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg text-white ${color} ${ring} ring-4 ${pulseClass}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-leaflet-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20]
+  });
+};
+
+const MapComponent: React.FC = () => {
+  const { vehicles, routes, drivers, students, startRoute } = useApp();
+  const [selectedBus, setSelectedBus] = useState<Vehicle | null>(null);
+
+  // Focus center on Bangalore
+  const bangaloreCenter: [number, number] = [12.9716, 77.5946];
+
+  // Helper to find driver details
+  const getDriver = (driverId: string) => {
+    return drivers.find(d => d.id === driverId);
+  };
+
+  // Helper to find route details
+  const getRoute = (routeId: string) => {
+    return routes.find(r => r.id === routeId);
+  };
+
+  return (
+    <div className="w-full h-full relative border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
+      <MapContainer 
+        center={bangaloreCenter} 
+        zoom={12} 
+        className="w-full h-full"
+        zoomControl={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* Polylines for active routes */}
+        {routes
+          .filter(r => r.status === 'running')
+          .map((route, idx) => {
+            const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+            return (
+              <Polyline
+                key={route.id}
+                positions={route.path}
+                color={colors[idx % colors.length]}
+                weight={4}
+                opacity={0.7}
+              />
+            );
+          })}
+
+        {/* Bus Markers */}
+        {vehicles
+          .filter(v => v.routeId && (v.status === 'active' || v.status === 'emergency'))
+          .map((bus) => {
+            const route = getRoute(bus.routeId);
+            if (!route) return null;
+
+            // Get current coordinate based on simulation path index
+            const currentCoord = route.path[route.currentPathIndex] || route.path[0];
+            if (!currentCoord) return null;
+
+            const driver = getDriver(bus.driverId);
+            const activeStudents = students.filter(s => s.busId === bus.id && s.boardingStatus === 'boarded').length;
+
+            return (
+              <Marker
+                key={bus.id}
+                position={[currentCoord[0], currentCoord[1]]}
+                icon={createCustomMarker(bus, route)}
+              >
+                <Popup>
+                  <div className="p-3 w-56 text-slate-800 space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                        <Bus className="w-4 h-4 text-blue-600" /> {bus.busNumber}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                        bus.status === 'emergency' ? 'bg-red-100 text-red-800' :
+                        route.status === 'running' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {bus.status === 'emergency' ? 'SOS ALERT' : route.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-slate-600 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Driver: <strong className="text-slate-800">{driver?.name || 'Unassigned'}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Route: <strong className="text-slate-800">{route.routeNumber}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Onboard: <strong className="text-slate-800">{activeStudents} / {bus.capacity}</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Gauge className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Speed: <strong className="text-slate-800">{bus.currentSpeed} km/h</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>ETA: <strong className="text-slate-800">{route.expectedArrivalTime}</strong></span>
+                      </div>
+                    </div>
+
+                    {bus.status === 'emergency' && (
+                      <div className="p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-[10px] font-bold text-red-700 mt-2 animate-pulse">
+                        <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                        <span>EMERGENCY PROTOCOL ACTIVE</span>
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+      </MapContainer>
+    </div>
+  );
+};
+
+export default MapComponent;
