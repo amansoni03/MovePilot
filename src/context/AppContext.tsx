@@ -168,7 +168,7 @@ interface AppContextType {
   setSimulationActive: (active: boolean) => void;
   startRoute: (routeId: string) => void;
   stopRoute: (routeId: string) => void;
-  addRoute: (route: Omit<Route, 'id' | 'currentPathIndex' | 'stops' | 'path'> & { stops: Omit<RouteStop, 'status' | 'boardedCount'>[] }) => void;
+  addRoute: (route: any) => void;
   editRoute: (route: Route) => void;
   deleteRoute: (routeId: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'currentStudents' | 'currentSpeed'>) => void;
@@ -977,13 +977,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const addRoute = (newRoute: Omit<Route, 'id' | 'currentPathIndex' | 'stops' | 'path'> & { stops: Omit<RouteStop, 'status' | 'boardedCount'>[] }) => {
+  const addRoute = (newRoute: any) => {
     const nextId = `RT-${String(routes.length + 1).padStart(3, '0')}`;
     
-    // Generate simple linear path from first stop to last stop (or school center)
+    // Generate simple linear path from first stop to last stop (or school center) if no custom path is provided
     const schoolCenter = BangaloreCenter;
     const startStop = newRoute.stops[0] || schoolCenter;
-    const path = generatePath(schoolCenter, startStop, 25);
+    const path = newRoute.path || generatePath(schoolCenter, startStop, 25);
     
     const stops: RouteStop[] = newRoute.stops.map(st => ({
       ...st,
