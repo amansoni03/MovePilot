@@ -1,0 +1,27 @@
+id,name,avatar,phone,licenseNumber,licenseExpiry,busId,routeId,experience,safetyStatus,status
+DRV-001,Amit Sharma,https://api.dicebear.com/7.x/avataaars/svg?seed=Amit%20Sharma,+91 98765 50000,DL-10000/KA03,2029-12-01,BUS-001,RT-001,5,safe,on route
+DRV-002,Rakesh Verma,https://api.dicebear.com/7.x/avataaars/svg?seed=Rakesh%20Verma,+91 98765 50001,DL-10001/KA03,2029-12-02,BUS-002,RT-002,6,safe,on route
+DRV-003,Sanjay Kumar,https://api.dicebear.com/7.x/avataaars/svg?seed=Sanjay%20Kumar,+91 98765 50002,DL-10002/KA03,2029-12-03,BUS-003,RT-003,7,warning,on route
+DRV-004,Vijay Singh,https://api.dicebear.com/7.x/avataaars/svg?seed=Vijay%20Singh,+91 98765 50003,DL-10003/KA03,2029-12-04,BUS-004,RT-004,8,safe,on route
+DRV-005,Rajesh Patel,https://api.dicebear.com/7.x/avataaars/svg?seed=Rajesh%20Patel,+91 98765 50004,DL-10004/KA03,2029-12-05,BUS-005,RT-005,9,safe,on route
+DRV-006,Anil Gupta,https://api.dicebear.com/7.x/avataaars/svg?seed=Anil%20Gupta,+91 98765 50005,DL-10005/KA03,2029-12-06,BUS-006,RT-006,10,safe,on route
+DRV-007,Sunil Dutt,https://api.dicebear.com/7.x/avataaars/svg?seed=Sunil%20Dutt,+91 98765 50006,DL-10006/KA03,2029-12-07,BUS-007,RT-007,11,safe,on route
+DRV-008,Ramesh Chawla,https://api.dicebear.com/7.x/avataaars/svg?seed=Ramesh%20Chawla,+91 98765 50007,DL-10007/KA03,2029-12-08,BUS-008,RT-008,12,safe,on route
+DRV-009,Manoj Tiwari,https://api.dicebear.com/7.x/avataaars/svg?seed=Manoj%20Tiwari,+91 98765 50008,DL-10008/KA03,2029-12-09,BUS-009,RT-009,13,safe,on route
+DRV-010,Vikram Rathore,https://api.dicebear.com/7.x/avataaars/svg?seed=Vikram%20Rathore,+91 98765 50009,DL-10009/KA03,2029-12-10,BUS-010,RT-010,14,safe,on route
+DRV-011,Karan Johar,https://api.dicebear.com/7.x/avataaars/svg?seed=Karan%20Johar,+91 98765 50010,DL-10010/KA03,2029-12-11,BUS-011,RT-011,15,safe,on route
+DRV-012,Arjun Reddy,https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun%20Reddy,+91 98765 50011,DL-10011/KA03,2029-12-12,BUS-012,RT-012,16,safe,on route
+DRV-013,Pradeep Yadav,https://api.dicebear.com/7.x/avataaars/svg?seed=Pradeep%20Yadav,+91 98765 50012,DL-10012/KA03,2029-12-13,BUS-013,RT-013,17,safe,on route
+DRV-014,Dinesh Karthik,https://api.dicebear.com/7.x/avataaars/svg?seed=Dinesh%20Karthik,+91 98765 50013,DL-10013/KA03,2029-12-14,BUS-014,RT-014,18,safe,on route
+DRV-015,Suresh Raina,https://api.dicebear.com/7.x/avataaars/svg?seed=Suresh%20Raina,+91 98765 50014,DL-10014/KA03,2029-12-15,BUS-015,RT-015,19,safe,on route
+DRV-016,Rahul Dravid,https://api.dicebear.com/7.x/avataaars/svg?seed=Rahul%20Dravid,+91 98765 50015,DL-10015/KA03,2029-12-16,BUS-016,RT-016,5,safe,on route
+DRV-017,Ashish Nehra,https://api.dicebear.com/7.x/avataaars/svg?seed=Ashish%20Nehra,+91 98765 50016,DL-10016/KA03,2029-12-17,BUS-017,RT-017,6,safe,on route
+DRV-018,Harbhajan Singh,https://api.dicebear.com/7.x/avataaars/svg?seed=Harbhajan%20Singh,+91 98765 50017,DL-10017/KA03,2029-12-18,BUS-018,RT-018,7,safe,on route
+DRV-019,Mohit Sharma,https://api.dicebear.com/7.x/avataaars/svg?seed=Mohit%20Sharma,+91 98765 50018,DL-10018/KA03,2029-12-19,BUS-019,RT-019,8,safe,on route
+DRV-020,Yuvraj Singh,https://api.dicebear.com/7.x/avataaars/svg?seed=Yuvraj%20Singh,+91 98765 50019,DL-10019/KA03,2029-12-20,BUS-020,RT-020,9,safe,on route
+DRV-021,Ajinkya Rahane,https://api.dicebear.com/7.x/avataaars/svg?seed=Ajinkya%20Rahane,+91 98765 50020,DL-10020/KA03,2029-12-21,BUS-021,RT-021,10,safe,on route
+DRV-022,Cheteshwar Pujara,https://api.dicebear.com/7.x/avataaars/svg?seed=Cheteshwar%20Pujara,+91 98765 50021,DL-10021/KA03,2029-12-22,BUS-022,RT-022,11,safe,on route
+DRV-023,Jasprit Bumrah,https://api.dicebear.com/7.x/avataaars/svg?seed=Jasprit%20Bumrah,+91 98765 50022,DL-10022/KA03,2029-12-23,,,12,safe,available
+DRV-024,Hardik Pandya,https://api.dicebear.com/7.x/avataaars/svg?seed=Hardik%20Pandya,+91 98765 50023,DL-10023/KA03,2029-12-24,,,13,safe,available
+DRV-025,Krunal Pandya,https://api.dicebear.com/7.x/avataaars/svg?seed=Krunal%20Pandya,+91 98765 50024,DL-10024/KA03,2029-12-25,,,14,safe,available
+DRV-026,Ishant Sharma,https://api.dicebear.com/7.x/avataaars/svg?seed=Ishant%20Sharma,+91 98765 50025,DL-10025/KA03,2029-12-26,,,15,safe,available

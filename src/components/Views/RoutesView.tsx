@@ -18,8 +18,8 @@ export const RoutesView: React.FC<RoutesViewProps> = ({ onOpenAddRoute }) => {
 
   // Search filter
   const filteredRoutes = routes.filter(r => 
-    r.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (r.routeNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getBusName = (busId: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp, Notification } from '@/context/AppContext';
 import { 
   Bell, Search, Menu, User, Calendar, LogOut, Settings as SettingsIcon, 
@@ -25,6 +25,11 @@ export const Header: React.FC<HeaderProps> = ({
   const { notifications, markNotificationRead, markAllNotificationsRead } = useApp();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [dateStr, setDateStr] = useState('');
+
+  useEffect(() => {
+    setDateStr(new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -95,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Calendar / Date */}
         <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
           <Calendar className="w-4 h-4 text-slate-400" />
-          <span>{new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          <span>{dateStr}</span>
         </div>
 
         {/* Notifications */}

@@ -4,7 +4,7 @@ import React from 'react';
 import { 
   LayoutDashboard, Map, Route, Users, ShieldAlert, 
   Settings, Bell, FileBarChart, Bus, UserCheck, 
-  ClipboardList, Plus, AlertOctagon, QrCode
+  ClipboardList, Plus, AlertOctagon, QrCode, Sparkles
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
@@ -36,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'tracking', name: 'Live Tracking', icon: <Map className="w-5 h-5" /> },
     { id: 'routes', name: 'Routes', icon: <Route className="w-5 h-5" /> },
+    { id: 'optimizer', name: 'AI Route Optimizer', icon: <Sparkles className="w-5 h-5 text-amber-400" /> },
     { id: 'students', name: 'Students', icon: <Users className="w-5 h-5" /> },
     { id: 'drivers', name: 'Drivers', icon: <UserCheck className="w-5 h-5" /> },
     { id: 'vehicles', name: 'Vehicles', icon: <Bus className="w-5 h-5" /> },

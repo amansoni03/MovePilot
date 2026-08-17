@@ -6,7 +6,9 @@ import L from 'leaflet';
 import { useApp, Route, Vehicle } from '@/context/AppContext';
 import { Bus, User, Users, MapPin, Gauge, Clock, ShieldAlert } from 'lucide-react';
 
-// Custom icons using Leaflet divIcon
+// Cache custom icons using Leaflet divIcon to prevent re-creation on every tick
+const markerIconCache = new Map<string, L.DivIcon>();
+
 const createCustomMarker = (bus: Vehicle, route: Route | undefined) => {
   let color = 'bg-blue-600'; // Scheduled / Inactive
   let ring = 'ring-blue-100';
@@ -18,8 +20,6 @@ const createCustomMarker = (bus: Vehicle, route: Route | undefined) => {
     pulseClass = 'bus-pulse-emergency';
   } else if (bus.status === 'active') {
     if (route && route.status === 'running') {
-      const isDelayed = route.stops.some(s => s.status === 'pending' && Math.random() < 0.1); // simulated delay check
-      // For this demo, let's make BUS 12 delayed if it's not breakdown, or check if speed is high
       if (bus.busNumber === 'BUS 14' || bus.currentSpeed > 60) {
         color = 'bg-amber-500';
         ring = 'ring-amber-100';
@@ -34,27 +34,41 @@ const createCustomMarker = (bus: Vehicle, route: Route | undefined) => {
     ring = 'ring-slate-100';
   }
 
+  const cacheKey = `${bus.id}-${bus.status}-${route?.status || 'none'}-${color}`;
+  if (markerIconCache.has(cacheKey)) {
+    return markerIconCache.get(cacheKey)!;
+  }
+
   const html = `
     <div class="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg text-white ${color} ${ring} ring-4 ${pulseClass}">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
     </div>
   `;
 
-  return L.divIcon({
+  const icon = L.divIcon({
     html,
     className: 'custom-leaflet-marker',
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -20]
   });
+
+  markerIconCache.set(cacheKey, icon);
+  return icon;
 };
 
 const MapComponent: React.FC = () => {
   const { vehicles, routes, drivers, students, startRoute } = useApp();
   const [selectedBus, setSelectedBus] = useState<Vehicle | null>(null);
 
-  // Focus center on Bangalore
-  const bangaloreCenter: [number, number] = [12.9716, 77.5946];
+  // Compute map center: if there are UP coordinates, center on UP/Lucknow, else default
+  const defaultCenter: [number, number] = (() => {
+    const activeRunning = routes.find(r => r.status === 'running' && Array.isArray(r.path) && r.path.length > 0);
+    if (activeRunning && activeRunning.path[0]) {
+      return [activeRunning.path[0][0], activeRunning.path[0][1]];
+    }
+    return [26.8500, 80.9499]; // Lucknow, Uttar Pradesh default
+  })();
 
   // Helper to find driver details
   const getDriver = (driverId: string) => {
@@ -69,7 +83,7 @@ const MapComponent: React.FC = () => {
   return (
     <div className="w-full h-full relative border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
       <MapContainer 
-        center={bangaloreCenter} 
+        center={defaultCenter} 
         zoom={12} 
         className="w-full h-full"
         zoomControl={true}
@@ -81,7 +95,7 @@ const MapComponent: React.FC = () => {
 
         {/* Polylines for active routes */}
         {routes
-          .filter(r => r.status === 'running')
+          .filter(r => r.status === 'running' && Array.isArray(r.path) && r.path.length > 0)
           .map((route, idx) => {
             const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
             return (

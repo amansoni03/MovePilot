@@ -2,9 +2,14 @@
 
 import React, { useState } from 'react';
 import { useApp, Driver } from '@/context/AppContext';
-import { Search, Shield, ShieldCheck, ShieldAlert, Award, Phone, Bus, Info } from 'lucide-react';
+import { Search, Shield, ShieldCheck, ShieldAlert, Award, Phone, Bus, Info, UserPlus, Edit, Leaf } from 'lucide-react';
 
-export const DriversView: React.FC = () => {
+interface DriversViewProps {
+  onOpenAddDriver?: () => void;
+  onOpenEditDriver?: (driver: Driver) => void;
+}
+
+export const DriversView: React.FC<DriversViewProps> = ({ onOpenAddDriver, onOpenEditDriver }) => {
   const { drivers, vehicles, routes, assignDriver, addToast } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -72,6 +77,15 @@ export const DriversView: React.FC = () => {
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs bg-slate-50 font-medium"
           />
         </div>
+
+        {onOpenAddDriver && (
+          <button
+            onClick={onOpenAddDriver}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-md shadow-blue-600/10"
+          >
+            <UserPlus className="w-4 h-4" /> Onboard New Driver
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -113,8 +127,10 @@ export const DriversView: React.FC = () => {
                     <strong className="text-slate-800">{getBusNumber(driver.busId)}</strong>
                   </p>
                   <p className="flex justify-between">
-                    <span>Assigned Route:</span>
-                    <strong className="text-slate-800">{getRouteNumber(driver.routeId)}</strong>
+                    <span>Eco-Safety Rating:</span>
+                    <strong className="text-emerald-700 flex items-center gap-1 font-bold">
+                      <Leaf className="w-3 h-3" /> {driver.ecoSafetyScore || 96}/100
+                    </strong>
                   </p>
                 </div>
 
@@ -146,11 +162,19 @@ export const DriversView: React.FC = () => {
 
         {/* Driver Details & Re-assignment Panel - 1 column */}
         <div className="bg-white border border-slate-100 rounded-2xl shadow-xs p-5 space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
-            <Award className="w-5 h-5 text-blue-600" />
-            <div>
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-blue-600" />
               <h3 className="font-bold text-slate-900 text-sm">Driver Assignment</h3>
             </div>
+            {selectedDriver && onOpenEditDriver && (
+              <button
+                onClick={() => onOpenEditDriver(selectedDriver)}
+                className="flex items-center gap-1 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" /> Edit Profile
+              </button>
+            )}
           </div>
 
           {selectedDriver ? (

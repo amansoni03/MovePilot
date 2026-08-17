@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { fetchAll, upsertRecord, deleteRecord, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 // ==========================================
 // TYPES & INTERFACES
@@ -64,8 +65,22 @@ export interface Driver {
   routeId: string;
   experience: number; // years
   safetyStatus: 'safe' | 'warning' | 'suspended';
+  ecoSafetyScore?: number; // Teltonika Green Driving Score 0-100
   status: 'available' | 'on route' | 'off duty' | 'suspended';
 }
+
+export interface GpsDevice {
+  id: string; // GPS-DEV-001
+  imei: string;
+  deviceModel: string; // Teltonika FMC920
+  protocol: string;
+  simPhoneNumber: string;
+  simCarrier: string;
+  busId: string;
+  status: 'active' | 'inactive' | 'maintenance' | 'unassigned';
+  lastPingTime: string;
+}
+
 
 export interface Student {
   id: string; // STU-0001
@@ -147,6 +162,8 @@ interface AppContextType {
   settings: AppSettings;
   simulationActive: boolean;
   
+  gpsDevices: GpsDevice[];
+  
   // Actions
   setSimulationActive: (active: boolean) => void;
   startRoute: (routeId: string) => void;
@@ -156,11 +173,17 @@ interface AppContextType {
   deleteRoute: (routeId: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'currentStudents' | 'currentSpeed'>) => void;
   editVehicle: (vehicle: Vehicle) => void;
+  deleteVehicle: (vehicleId: string) => void;
   changeVehicleStatus: (vehicleId: string, status: Vehicle['status']) => void;
   assignDriver: (driverId: string, busId: string, routeId: string) => string | null;
   addDriver: (driver: Omit<Driver, 'id' | 'status'>) => void;
   editDriver: (driver: Driver) => void;
+  deleteDriver: (driverId: string) => void;
+  addStudent: (student: Omit<Student, 'id' | 'boardingStatus'>) => void;
+  editStudent: (student: Student) => void;
+  deleteStudent: (studentId: string) => void;
   markStudentBoarding: (studentId: string, status: Student['boardingStatus']) => void;
+  markChildAbsentToday: (studentId: string, reason?: string) => void;
   triggerEmergency: (event: Omit<EmergencyEvent, 'id' | 'time' | 'status' | 'driverId' | 'studentsOnboard'>) => void;
   acknowledgeEmergency: (id: string) => void;
   respondEmergency: (id: string) => void;
@@ -216,47 +239,305 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [gpsDevices, setGpsDevices] = useState<GpsDevice[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [initialized, setInitialized] = useState(false);
 
-  // Initialize and Seed Data
-  useEffect(() => {
-    const savedVehicles = localStorage.getItem('sct_vehicles');
-    const savedRoutes = localStorage.getItem('sct_routes');
-    const savedStudents = localStorage.getItem('sct_students');
-    const savedDrivers = localStorage.getItem('sct_drivers');
-    const savedEmergencies = localStorage.getItem('sct_emergencies');
-    const savedNotifications = localStorage.getItem('sct_notifications');
-    const savedActivities = localStorage.getItem('sct_activities');
-    const savedSettings = localStorage.getItem('sct_settings');
 
-    if (savedVehicles && savedRoutes && savedStudents && savedDrivers) {
-      setVehicles(JSON.parse(savedVehicles));
-      setRoutes(JSON.parse(savedRoutes));
-      setStudents(JSON.parse(savedStudents));
-      setDrivers(JSON.parse(savedDrivers));
-      setEmergies(savedEmergencies ? JSON.parse(savedEmergencies) : []);
-      setNotifications(savedNotifications ? JSON.parse(savedNotifications) : []);
-      setActivities(savedActivities ? JSON.parse(savedActivities) : []);
-      setSettings(savedSettings ? JSON.parse(savedSettings) : defaultSettings);
-    } else {
-      seedData();
-    }
-    setInitialized(true);
+  // ─────────────────────────────────────────────────────────────────
+  // Initialize: try Supabase first, fall back to localStorage / seed
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const init = async () => {
+      if (isSupabaseConfigured()) {
+        // ── Pull live data from Supabase ──────────────────────────
+        const [dbDrivers, dbVehicles, dbRoutes, dbStudents,
+               dbEmergencies, dbNotifications, dbActivities,
+               dbGpsDevices] = await Promise.all([
+          fetchAll<any>('drivers'),
+          fetchAll<any>('vehicles'),
+          fetchAll<any>('routes'),
+          fetchAll<any>('students'),
+          fetchAll<any>('emergencies'),
+          fetchAll<any>('notifications'),
+          fetchAll<any>('activities'),
+          fetchAll<any>('gps_devices'),
+        ]);
+
+        if (dbDrivers.length || dbVehicles.length || dbStudents.length || dbRoutes.length) {
+          // Map DB snake_case fields to app model camelCase
+          if (dbDrivers.length) {
+            setDrivers(dbDrivers.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              avatar: d.avatar,
+              phone: d.phone,
+              licenseNumber: d.license_number || d.licenseNumber || '',
+              licenseExpiry: d.license_expiry || d.licenseExpiry || '',
+              busId: d.bus_id || d.busId || '',
+              routeId: d.route_id || d.routeId || '',
+              experience: d.experience || 0,
+              safetyStatus: d.safety_status || d.safetyStatus || 'safe',
+              ecoSafetyScore: d.eco_safety_score ?? d.ecoSafetyScore ?? 95,
+              status: d.status || 'available'
+            })));
+          }
+
+          if (dbVehicles.length) {
+            setVehicles(dbVehicles.map((v: any) => ({
+              id: v.id,
+              busNumber: v.bus_number || v.busNumber || v.id,
+              registrationNumber: v.registration_number || v.registrationNumber || '',
+              model: v.model || '',
+              capacity: v.capacity || 40,
+              currentStudents: v.current_students ?? v.currentStudents ?? 0,
+              driverId: v.driver_id || v.driverId || '',
+              routeId: v.route_id || v.routeId || '',
+              gpsStatus: v.gps_status || v.gpsStatus || 'connected',
+              gpsDeviceId: v.gps_device_id || v.gpsDeviceId || '',
+              insuranceExpiry: v.insurance_expiry || v.insuranceExpiry || '',
+              fitnessExpiry: v.fitness_expiry || v.fitnessExpiry || '',
+              pollutionExpiry: v.pollution_expiry || v.pollutionExpiry || '',
+              maintenanceStatus: v.maintenance_status || v.maintenanceStatus || 'good',
+              status: v.status || 'active',
+              currentSpeed: v.current_speed ?? v.currentSpeed ?? 0,
+              maxSpeedLimit: v.max_speed_limit ?? v.maxSpeedLimit ?? 50
+            })));
+          }
+
+          if (dbRoutes.length) {
+            setRoutes(dbRoutes.map((r: any) => ({
+              id: r.id,
+              name: r.name || '',
+              routeNumber: r.route_number || r.routeNumber || r.id,
+              busId: r.bus_id || r.busId || '',
+              driverId: r.driver_id || r.driverId || '',
+              stops: r.stops || [],
+              studentsCount: r.students_count ?? r.studentsCount ?? 0,
+              distance: r.distance || 0,
+              duration: r.duration || 0,
+              status: r.status || 'scheduled',
+              path: r.path || [],
+              currentPathIndex: r.current_path_index ?? r.currentPathIndex ?? 0,
+              departureTime: r.departure_time || r.departureTime || '',
+              expectedArrivalTime: r.expected_arrival_time || r.expectedArrivalTime || ''
+            })));
+          }
+
+          if (dbStudents.length) {
+            setStudents(dbStudents.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              class: s.class,
+              section: s.section,
+              routeId: s.route_id || s.routeId || '',
+              busId: s.bus_id || s.busId || '',
+              pickupStop: s.pickup_stop || s.pickupStop || '',
+              boardingStatus: s.boarding_status || s.boardingStatus || 'not boarded',
+              parentName: s.parent_name || s.parentName || '',
+              parentContact: s.parent_contact || s.parentContact || '',
+              emergencyContact: s.emergency_contact || s.emergencyContact || '',
+              boardingTime: s.boarding_time || s.boardingTime || undefined,
+              dropTime: s.drop_time || s.dropTime || undefined
+            })));
+          }
+
+          if (dbEmergencies.length)  setEmergies(dbEmergencies);
+          if (dbNotifications.length) setNotifications(dbNotifications);
+          if (dbActivities.length)   setActivities(dbActivities);
+
+          if (dbGpsDevices.length) {
+            setGpsDevices(dbGpsDevices.map((g: any) => ({
+              id: g.id,
+              imei: g.imei,
+              deviceModel: g.device_model || g.deviceModel || 'Teltonika FMC920',
+              protocol: g.protocol || 'teltonika_codec8',
+              simPhoneNumber: g.sim_phone_number || g.simPhoneNumber || '',
+              simCarrier: g.sim_carrier || g.simCarrier || '',
+              busId: g.bus_id || g.busId || '',
+              status: g.status || 'active',
+              lastPingTime: g.last_ping_time || g.lastPingTime || ''
+            })));
+          } else {
+            // Seed GPS devices from defaults since table is empty
+            const defaultGps: GpsDevice[] = Array.from({ length: 35 }).map((_, idx) => ({
+              id: `GPS-DEV-${String(idx + 1).padStart(3, '0')}`,
+              imei: `356891002345${String(idx + 101).padStart(3, '0')}`,
+              deviceModel: idx % 3 === 0 ? 'Teltonika FMC920' : 'Teltonika FMB920',
+              protocol: 'teltonika_codec8',
+              simPhoneNumber: `+91 98123 ${10000 + idx}`,
+              simCarrier: 'Airtel M2M',
+              busId: `BUS-${String(idx + 1).padStart(3, '0')}`,
+              status: 'active' as const,
+              lastPingTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            setGpsDevices(defaultGps);
+          }
+          setInitialized(true);
+          return;
+        }
+        // DB is empty — fall through to localStorage / seed
+      }
+
+      // ── localStorage fallback ─────────────────────────────────
+      const savedVehicles = localStorage.getItem('sct_vehicles');
+      const savedRoutes = localStorage.getItem('sct_routes');
+      const savedStudents = localStorage.getItem('sct_students');
+      const savedDrivers = localStorage.getItem('sct_drivers');
+      const savedEmergencies = localStorage.getItem('sct_emergencies');
+      const savedNotifications = localStorage.getItem('sct_notifications');
+      const savedActivities = localStorage.getItem('sct_activities');
+      const savedSettings = localStorage.getItem('sct_settings');
+      const savedGpsDevices = localStorage.getItem('sct_gps_devices');
+
+      if (savedVehicles && savedRoutes && savedStudents && savedDrivers) {
+        setVehicles(JSON.parse(savedVehicles));
+        setRoutes(JSON.parse(savedRoutes));
+        setStudents(JSON.parse(savedStudents));
+        setDrivers(JSON.parse(savedDrivers));
+        setEmergies(savedEmergencies ? JSON.parse(savedEmergencies) : []);
+        setNotifications(savedNotifications ? JSON.parse(savedNotifications) : []);
+        setActivities(savedActivities ? JSON.parse(savedActivities) : []);
+        setSettings(savedSettings ? JSON.parse(savedSettings) : defaultSettings);
+        if (savedGpsDevices) {
+          setGpsDevices(JSON.parse(savedGpsDevices));
+        } else {
+          const defaultGps: GpsDevice[] = Array.from({ length: 35 }).map((_, idx) => ({
+            id: `GPS-DEV-${String(idx + 1).padStart(3, '0')}`,
+            imei: `356891002345${String(idx + 101).padStart(3, '0')}`,
+            deviceModel: idx % 3 === 0 ? 'Teltonika FMC920' : 'Teltonika FMB920',
+            protocol: 'teltonika_codec8',
+            simPhoneNumber: `+91 98123 ${10000 + idx}`,
+            simCarrier: 'Airtel M2M',
+            busId: `BUS-${String(idx + 1).padStart(3, '0')}`,
+            status: 'active' as const,
+            lastPingTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }));
+          setGpsDevices(defaultGps);
+        }
+      } else {
+        seedData();
+      }
+      setInitialized(true);
+    };
+
+    init();
   }, []);
 
-  // Save changes to localStorage
+  // ─────────────────────────────────────────────────────────────────────────
+  // Persist: localStorage (always) + debounced Supabase sync (when connected)
+  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!initialized) return;
-    localStorage.setItem('sct_vehicles', JSON.stringify(vehicles));
-    localStorage.setItem('sct_routes', JSON.stringify(routes));
-    localStorage.setItem('sct_students', JSON.stringify(students));
-    localStorage.setItem('sct_drivers', JSON.stringify(drivers));
-    localStorage.setItem('sct_emergencies', JSON.stringify(emergencies));
+
+    // ── 1. Always write to localStorage (instant offline fallback) ───────
+    localStorage.setItem('sct_vehicles',      JSON.stringify(vehicles));
+    localStorage.setItem('sct_routes',        JSON.stringify(routes));
+    localStorage.setItem('sct_students',      JSON.stringify(students));
+    localStorage.setItem('sct_drivers',       JSON.stringify(drivers));
+    localStorage.setItem('sct_emergencies',   JSON.stringify(emergencies));
     localStorage.setItem('sct_notifications', JSON.stringify(notifications));
-    localStorage.setItem('sct_activities', JSON.stringify(activities));
-    localStorage.setItem('sct_settings', JSON.stringify(settings));
-  }, [vehicles, routes, students, drivers, emergencies, notifications, activities, settings, initialized]);
+    localStorage.setItem('sct_activities',    JSON.stringify(activities));
+    localStorage.setItem('sct_settings',      JSON.stringify(settings));
+    localStorage.setItem('sct_gps_devices',   JSON.stringify(gpsDevices));
+
+    // ── 2. Debounced Supabase sync — waits 3 s after last change ─────────
+    if (!isSupabaseConfigured()) return;
+
+    const timer = setTimeout(() => {
+      // camelCase → snake_case mappers matching supabase_schema.sql exactly
+      const toDbVehicle = (v: Vehicle) => ({
+        id: v.id,
+        bus_number:           v.busNumber,
+        registration_number:  v.registrationNumber,
+        model:                v.model,
+        capacity:             v.capacity,
+        current_students:     v.currentStudents,
+        driver_id:            v.driverId || null,
+        route_id:             v.routeId  || null,
+        gps_status:           v.gpsStatus,
+        gps_device_id:        v.gpsDeviceId || null,
+        insurance_expiry:     v.insuranceExpiry,
+        fitness_expiry:       v.fitnessExpiry,
+        pollution_expiry:     v.pollutionExpiry,
+        maintenance_status:   v.maintenanceStatus,
+        status:               v.status,
+        current_speed:        v.currentSpeed,
+        max_speed_limit:      v.maxSpeedLimit,
+      });
+
+      const toDbDriver = (d: Driver) => ({
+        id: d.id,
+        name:              d.name,
+        avatar:            d.avatar,
+        phone:             d.phone,
+        license_number:    d.licenseNumber,
+        license_expiry:    d.licenseExpiry,
+        bus_id:            d.busId   || null,
+        route_id:          d.routeId || null,
+        experience:        d.experience,
+        safety_status:     d.safetyStatus,
+        eco_safety_score:  d.ecoSafetyScore ?? 95,
+        status:            d.status,
+      });
+
+      const toDbStudent = (s: Student) => ({
+        id: s.id,
+        name:              s.name,
+        class:             s.class,
+        section:           s.section,
+        route_id:          s.routeId || null,
+        bus_id:            s.busId   || null,
+        pickup_stop:       s.pickupStop,
+        boarding_status:   s.boardingStatus,
+        parent_name:       s.parentName,
+        parent_contact:    s.parentContact,
+        emergency_contact: s.emergencyContact,
+        boarding_time:     s.boardingTime ?? null,
+        drop_time:         s.dropTime    ?? null,
+      });
+
+      const toDbRoute = (r: Route) => ({
+        id: r.id,
+        name:                   r.name,
+        route_number:           r.routeNumber,
+        bus_id:                 r.busId    || null,
+        driver_id:              r.driverId || null,
+        students_count:         r.studentsCount,
+        distance:               r.distance,
+        duration:               r.duration,
+        status:                 r.status,
+        path:                   r.path,
+        current_path_index:     r.currentPathIndex,
+        departure_time:         r.departureTime,
+        expected_arrival_time:  r.expectedArrivalTime,
+      });
+
+      const toDbGps = (g: GpsDevice) => ({
+        id:               g.id,
+        imei:             g.imei,
+        device_model:     g.deviceModel,
+        protocol:         g.protocol,
+        sim_phone_number: g.simPhoneNumber,
+        sim_carrier:      g.simCarrier,
+        bus_id:           g.busId || null,
+        status:           g.status,
+        last_ping_time:   g.lastPingTime,
+      });
+
+      // Fire bulk upserts in parallel
+      Promise.all([
+        ...vehicles.map(v   => upsertRecord('vehicles',    toDbVehicle(v))),
+        ...drivers.map(d    => upsertRecord('drivers',     toDbDriver(d))),
+        ...students.map(s   => upsertRecord('students',    toDbStudent(s))),
+        ...routes.map(r     => upsertRecord('routes',      toDbRoute(r))),
+        ...gpsDevices.map(g => upsertRecord('gps_devices', toDbGps(g))),
+      ]).catch(() => {/* errors already logged inside upsertRecord */});
+    }, 3000); // 3-second debounce
+
+    return () => clearTimeout(timer);
+  }, [vehicles, routes, students, drivers, emergencies, notifications, activities, settings, gpsDevices, initialized]);
+
 
   const seedData = () => {
     // 1. Generate Drivers (26 drivers)
@@ -282,9 +563,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         routeId: index < 22 ? `RT-${String(index + 1).padStart(3, '0')}` : '',
         experience: 5 + (index % 15),
         safetyStatus: index === 2 ? 'warning' : 'safe',
+        ecoSafetyScore: 88 + (index * 3) % 12,
         status: index < 22 ? 'on route' : 'available',
       };
     });
+
+    // Generate Teltonika FMC920 Hardware GPS Devices
+    const seededGpsDevices: GpsDevice[] = Array.from({ length: 35 }).map((_, idx) => ({
+      id: `GPS-DEV-${String(idx + 1).padStart(3, '0')}`,
+      imei: `356891002345${String(idx + 101).padStart(3, '0')}`,
+      deviceModel: idx % 3 === 0 ? "Teltonika FMC920" : "Teltonika FMB920",
+      protocol: "teltonika_codec8",
+      simPhoneNumber: `+91 98123 ${10000 + idx}`,
+      simCarrier: "Airtel M2M",
+      busId: `BUS-${String(idx + 1).padStart(3, '0')}`,
+      status: "active",
+      lastPingTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+
+    setGpsDevices(seededGpsDevices);
+
+
 
     // 2. Generate Vehicles (35 vehicles: 28 active, 4 maintenance, 3 inactive)
     const seededVehicles: Vehicle[] = [];
@@ -752,9 +1051,67 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addActivity(`Vehicle ${updatedVehicle.busNumber} details updated.`, 'general', updatedVehicle.id);
   };
 
+  const deleteVehicle = (vehicleId: string) => {
+    const v = vehicles.find(veh => veh.id === vehicleId);
+    setVehicles(prev => prev.filter(veh => veh.id !== vehicleId));
+    addActivity(`Vehicle ${v?.busNumber || vehicleId} removed from fleet.`, 'general');
+    setDrivers(prev => prev.map(d => d.busId === vehicleId ? { ...d, busId: '', status: 'available' } : d));
+    setRoutes(prev => prev.map(r => r.busId === vehicleId ? { ...r, busId: '' } : r));
+  };
+
   const changeVehicleStatus = (vehicleId: string, status: Vehicle['status']) => {
     setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, status } : v));
   };
+
+  const addStudent = (newStudent: Omit<Student, 'id' | 'boardingStatus'>) => {
+    const nextId = `STU-${String(students.length + 1).padStart(4, '0')}`;
+    const student: Student = {
+      ...newStudent,
+      id: nextId,
+      boardingStatus: 'not boarded'
+    };
+    setStudents(prev => [student, ...prev]);
+    addActivity(`Student ${student.name} enrolled.`, 'general', student.busId, student.routeId);
+    sendNotification('success', `Student ${student.name} enrolled in Class ${student.class}-${student.section}.`);
+  };
+
+  const editStudent = (updatedStudent: Student) => {
+    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+    addActivity(`Student ${updatedStudent.name} records updated.`, 'general');
+  };
+
+  const deleteStudent = (studentId: string) => {
+    const s = students.find(stu => stu.id === studentId);
+    setStudents(prev => prev.filter(stu => stu.id !== studentId));
+    addActivity(`Student ${s?.name || studentId} record removed.`, 'general');
+  };
+
+  const deleteDriver = (driverId: string) => {
+    const d = drivers.find(drv => drv.id === driverId);
+    setDrivers(prev => prev.filter(drv => drv.id !== driverId));
+    addActivity(`Driver ${d?.name || driverId} offboarded.`, 'general');
+    setVehicles(prev => prev.map(v => v.driverId === driverId ? { ...v, driverId: '' } : v));
+    setRoutes(prev => prev.map(r => r.driverId === driverId ? { ...r, driverId: '' } : r));
+  };
+
+  const markChildAbsentToday = (studentId: string, reason?: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, boardingStatus: 'absent' } : s));
+
+    setVehicles(prev => prev.map(v => {
+      if (v.id === student.busId) {
+        const activeOnboard = students.filter(s => s.busId === v.id && s.id !== studentId && s.boardingStatus === 'boarded').length;
+        return { ...v, currentStudents: activeOnboard };
+      }
+      return v;
+    }));
+
+    addActivity(`Parent marked ${student.name} ABSENT today.`, 'general', student.busId, student.routeId);
+    sendNotification('info', `NOTICE: ${student.name} (Stop: ${student.pickupStop}) marked ABSENT today.`, student.busId, student.routeId);
+  };
+
 
   const assignDriver = (driverId: string, busId: string, routeId: string): string | null => {
     // Check if driver is already assigned to a running route
@@ -1043,7 +1400,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setRoutes(prevRoutes => {
         let routesUpdated = false;
         const nextRoutes = prevRoutes.map(route => {
-          if (route.status !== 'running') return route;
+          if (route.status !== 'running' || !Array.isArray(route.path) || route.path.length === 0) return route;
           
           routesUpdated = true;
           const nextIndex = route.currentPathIndex + 1;
@@ -1133,10 +1490,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       });
 
-    }, 4000); // simulation ticks every 4 seconds
+    }, 4000); // simulation ticks smoothly every 4 seconds
 
     return () => clearInterval(interval);
-  }, [simulationActive, settings.gpsSimulation, initialized, routes, emergencies, vehicles]);
+  }, [simulationActive, settings.gpsSimulation, initialized]);
 
   return (
     <AppContext.Provider value={{
@@ -1149,6 +1506,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       activities,
       settings,
       simulationActive,
+      gpsDevices,
       
       setSimulationActive,
       startRoute,
@@ -1158,11 +1516,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteRoute,
       addVehicle,
       editVehicle,
+      deleteVehicle,
       changeVehicleStatus,
       assignDriver,
       addDriver,
       editDriver,
+      deleteDriver,
+      addStudent,
+      editStudent,
+      deleteStudent,
       markStudentBoarding,
+      markChildAbsentToday,
       triggerEmergency,
       acknowledgeEmergency,
       respondEmergency,

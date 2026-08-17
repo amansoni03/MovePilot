@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { useApp, Student } from '@/context/AppContext';
-import { Search, CheckCircle2, XCircle, UserMinus, QrCode, SlidersHorizontal, Info } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, UserMinus, QrCode, SlidersHorizontal, Info, UserPlus, Edit } from 'lucide-react';
 
 interface StudentsViewProps {
   onOpenScanBoarding: () => void;
+  onOpenAddStudent?: () => void;
+  onOpenEditStudent?: (student: Student) => void;
 }
 
-export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenScanBoarding }) => {
+export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenScanBoarding, onOpenAddStudent, onOpenEditStudent }) => {
   const { students, vehicles, routes, markStudentBoarding } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'boarded' | 'not boarded' | 'dropped off' | 'absent'>('all');
@@ -72,10 +74,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenScanBoarding }
 
           <button
             onClick={onOpenScanBoarding}
-            className="flex items-center gap-1.5 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm shadow-yellow-450/20"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
           >
-            <QrCode className="w-4 h-4" /> Scan Boarding
+            <QrCode className="w-4 h-4" /> RFID Simulator
           </button>
+
+          {onOpenAddStudent && (
+            <button
+              onClick={onOpenAddStudent}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-md shadow-blue-600/10"
+            >
+              <UserPlus className="w-4 h-4" /> Enroll Student
+            </button>
+          )}
         </div>
       </div>
 
@@ -175,8 +186,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({ onOpenScanBoarding }
 
         {/* Selected Student Details card - 1 column */}
         <div className="bg-white border border-slate-100 rounded-2xl shadow-xs p-5 space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <h3 className="font-bold text-slate-900 text-sm">Student Profile</h3>
+            {selectedStudent && onOpenEditStudent && (
+              <button
+                onClick={() => onOpenEditStudent(selectedStudent)}
+                className="flex items-center gap-1 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" /> Edit Record
+              </button>
+            )}
           </div>
 
           {selectedStudent ? (

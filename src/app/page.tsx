@@ -1,257 +1,215 @@
 "use client";
 
-import React, { useState } from 'react';
-import { AppProvider, useApp } from '@/context/AppContext';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
-import { ToastContainer } from '@/components/ToastContainer';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ShieldCheck, Users, Bus, ArrowRight } from 'lucide-react';
 
-// Import Views
-import { DashboardView } from '@/components/Views/DashboardView';
-import { TrackingView } from '@/components/Views/TrackingView';
-import { RoutesView } from '@/components/Views/RoutesView';
-import { StudentsView } from '@/components/Views/StudentsView';
-import { DriversView } from '@/components/Views/DriversView';
-import { VehiclesView } from '@/components/Views/VehiclesView';
-import { AttendanceView } from '@/components/Views/AttendanceView';
-import { EmergenciesView } from '@/components/Views/EmergenciesView';
-import { NotificationsView } from '@/components/Views/NotificationsView';
-import { ReportsView } from '@/components/Views/ReportsView';
-import { SettingsView } from '@/components/Views/SettingsView';
+export default function SplashAndLogin() {
+  const router = useRouter();
+  const [phase, setPhase] = useState<'splash' | 'transition' | 'login'>('splash');
 
-// Import Modals
-import { AddRouteModal } from '@/components/Modals/AddRouteModal';
-import { AddVehicleModal } from '@/components/Modals/AddVehicleModal';
-import { ScanBoardingModal } from '@/components/Modals/ScanBoardingModal';
-import { EmergencyModal } from '@/components/Modals/EmergencyModal';
+  useEffect(() => {
+    // Show splash for 2.5 seconds, then transition to login
+    const splashTimer = setTimeout(() => {
+      setPhase('transition');
 
-// Icons for Search Results
-import { Bus, Users, Route as RouteIcon, Search, ShieldAlert, Award } from 'lucide-react';
+      const loginTimer = setTimeout(() => {
+        setPhase('login');
+      }, 800); // 800ms for transition blur effect
 
-function DashboardContainer() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Mobile Sidebar
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+      return () => clearTimeout(loginTimer);
+    }, 2500);
 
-  // Modals
-  const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
-  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
-  const [isScanBoardingOpen, setIsScanBoardingOpen] = useState(false);
-  const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
-
-  const { vehicles, routes, students, drivers, emergencies } = useApp();
-
-  // Global Search Filter
-  const showSearchResults = searchQuery.trim().length > 0;
-  
-  const searchResults = {
-    vehicles: vehicles.filter(v => v.busNumber.toLowerCase().includes(searchQuery.toLowerCase()) || v.registrationNumber.toLowerCase().includes(searchQuery.toLowerCase())),
-    routes: routes.filter(r => r.routeNumber.toLowerCase().includes(searchQuery.toLowerCase()) || r.name.toLowerCase().includes(searchQuery.toLowerCase())),
-    students: students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.id.toLowerCase().includes(searchQuery.toLowerCase())),
-    drivers: drivers.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())),
-    emergencies: emergencies.filter(e => e.type.toLowerCase().includes(searchQuery.toLowerCase()) || e.description.toLowerCase().includes(searchQuery.toLowerCase())),
-  };
-
-  const hasResults = 
-    searchResults.vehicles.length > 0 ||
-    searchResults.routes.length > 0 ||
-    searchResults.students.length > 0 ||
-    searchResults.drivers.length > 0 ||
-    searchResults.emergencies.length > 0;
-
-  const renderActiveView = () => {
-    if (showSearchResults) {
-      return (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 space-y-6 fade-in text-slate-800">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Search className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Search Results for "{searchQuery}"</h3>
-          </div>
-
-          {!hasResults ? (
-            <div className="py-12 text-center text-slate-400 text-sm font-semibold">
-              No matching records found. Try another search.
-            </div>
-          ) : (
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 text-xs font-semibold">
-              {/* Students Results */}
-              {searchResults.students.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> Students ({searchResults.students.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {searchResults.students.slice(0, 4).map(s => (
-                      <div 
-                        key={s.id} 
-                        onClick={() => { setSearchQuery(''); setActiveTab('students'); }}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-300 transition-colors cursor-pointer flex justify-between items-center"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-900">{s.name}</p>
-                          <span className="text-[10px] text-slate-400 font-semibold leading-none">Class {s.class}-{s.section} • Stop: {s.pickupStop}</span>
-                        </div>
-                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase bg-slate-200 text-slate-700">{s.boardingStatus}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Vehicles Results */}
-              {searchResults.vehicles.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-50">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Bus className="w-3.5 h-3.5" /> Vehicles ({searchResults.vehicles.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {searchResults.vehicles.map(v => (
-                      <div 
-                        key={v.id}
-                        onClick={() => { setSearchQuery(''); setActiveTab('vehicles'); }}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-300 transition-colors cursor-pointer flex justify-between items-center"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-900">{v.busNumber}</p>
-                          <span className="text-[10px] text-slate-400 font-semibold leading-none">Reg: {v.registrationNumber} • Cap: {v.capacity}</span>
-                        </div>
-                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase bg-slate-200 text-slate-750">{v.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Routes Results */}
-              {searchResults.routes.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-50">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <RouteIcon className="w-3.5 h-3.5" /> Routes ({searchResults.routes.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {searchResults.routes.map(r => (
-                      <div 
-                        key={r.id}
-                        onClick={() => { setSearchQuery(''); setActiveTab('routes'); }}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-300 transition-colors cursor-pointer flex justify-between items-center"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-900">{r.routeNumber} - {r.name}</p>
-                          <span className="text-[10px] text-slate-400 font-semibold leading-none">{r.distance} km • {r.stops.length} stops</span>
-                        </div>
-                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase bg-slate-200 text-slate-700">{r.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Drivers Results */}
-              {searchResults.drivers.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-50">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5" /> Drivers ({searchResults.drivers.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {searchResults.drivers.map(d => (
-                      <div 
-                        key={d.id}
-                        onClick={() => { setSearchQuery(''); setActiveTab('drivers'); }}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-300 transition-colors cursor-pointer flex justify-between items-center"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-900">{d.name}</p>
-                          <span className="text-[10px] text-slate-400 font-semibold leading-none">Phone: {d.phone} • Exp: {d.experience} yrs</span>
-                        </div>
-                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase bg-slate-200 text-slate-700">{d.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardView setActiveTab={setActiveTab} onOpenScanBoarding={() => setIsScanBoardingOpen(true)} />;
-      case 'tracking':
-        return <TrackingView />;
-      case 'routes':
-        return <RoutesView onOpenAddRoute={() => setIsAddRouteOpen(true)} />;
-      case 'students':
-        return <StudentsView onOpenScanBoarding={() => setIsScanBoardingOpen(true)} />;
-      case 'drivers':
-        return <DriversView />;
-      case 'vehicles':
-        return <VehiclesView onOpenAddVehicle={() => setIsAddVehicleOpen(true)} />;
-      case 'attendance':
-        return <AttendanceView />;
-      case 'emergencies':
-        return <EmergenciesView />;
-      case 'notifications':
-        return <NotificationsView />;
-      case 'reports':
-        return <ReportsView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return <DashboardView setActiveTab={setActiveTab} onOpenScanBoarding={() => setIsScanBoardingOpen(true)} />;
-    }
-  };
+    return () => clearTimeout(splashTimer);
+  }, []);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800">
-      {/* Sidebar Component */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenAddRoute={() => setIsAddRouteOpen(true)}
-        onOpenAddVehicle={() => setIsAddVehicleOpen(true)}
-        onOpenScanBoarding={() => setIsScanBoardingOpen(true)}
-        onOpenEmergency={() => setIsEmergencyOpen(true)}
-        isOpenMobile={isMobileSidebarOpen}
-        setIsOpenMobile={setIsMobileSidebarOpen}
-      />
+    <div className="relative min-h-screen w-full overflow-hidden bg-slate-900 flex items-center justify-center">
 
-      {/* Main Panel Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-        {/* Top Navbar Header */}
-        <Header
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
+      {/* Background Image Container */}
+      <div
+        className={`absolute inset-0 w-full h-full transition-all duration-1000 ease-in-out
+          ${phase === 'splash' ? 'scale-100 opacity-100 filter-none' : ''}
+          ${phase === 'transition' ? 'scale-105 opacity-80 blur-sm' : ''}
+          ${phase === 'login' ? 'scale-110 opacity-70 blur-md' : ''}
+        `}
+      >
+        <img
+          src="/481211017_966591918899069_2194720222859782441_n.jpg"
+          alt="School of Management Sciences Lucknow"
+          className={`w-full h-full object-cover transition-transform duration-[3000ms] ease-out
+            ${phase === 'splash' ? 'scale-105' : 'scale-110'}
+          `}
+          // Fallback if image doesn't exist yet
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+          }}
         />
-
-        {/* Scrollable page body */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 max-h-[calc(100vh-4rem)]">
-          {renderActiveView()}
-        </main>
       </div>
 
-      {/* Toast popup warnings notifications */}
-      <ToastContainer />
+      {/* Splash Screen Content */}
+      <div
+        className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all duration-700 ease-in-out
+          ${phase === 'splash' ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+        `}
+      >
+        {/* Top Right Logo */}
+        <div className="absolute top-4 right-4 md:top-6 md:right-8 bg-white p-2 md:p-3 rounded-lg shadow-lg">
+          <img src="/image1.png" alt="School Logo" className="h-16 md:h-20 object-contain" />
+        </div>
 
-      {/* Modals stack */}
-      <AddRouteModal isOpen={isAddRouteOpen} onClose={() => setIsAddRouteOpen(false)} />
-      <AddVehicleModal isOpen={isAddVehicleOpen} onClose={() => setIsAddVehicleOpen(false)} />
-      <ScanBoardingModal isOpen={isScanBoardingOpen} onClose={() => setIsScanBoardingOpen(false)} />
-      <EmergencyModal isOpen={isEmergencyOpen} onClose={() => setIsEmergencyOpen(false)} />
+        {/* Center Title */}
+        <h1 
+          className="text-5xl md:text-7xl font-bold text-center px-4 tracking-wide leading-tight mb-8"
+          style={{
+            background: 'linear-gradient(to bottom, #fef08a 0%, #b45309 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.8)) drop-shadow(0px 1px 2px rgba(0,0,0,1))'
+          }}
+        >
+          School Transport <br /> Safety Console
+        </h1>
+
+        {/* === OPTION 1: PROFESSIONAL CIRCULAR SPINNER (ACTIVE) === */}
+        <div className="flex flex-col items-center mt-2 mb-6">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-yellow-500 rounded-full animate-spin mb-4 drop-shadow-lg"></div>
+          <div className="bg-black/50 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 shadow-lg">
+            <span className="text-white font-medium tracking-wide">Initializing Systems...</span>
+          </div>
+        </div>
+
+        {/* === OPTION 2: PROGRESS BAR (COMMENTED OUT) === */}
+        {/* 
+        <div className="w-[85%] max-w-lg h-5 md:h-6 rounded-full border border-white/60 bg-black/40 backdrop-blur-sm overflow-hidden mb-6 shadow-[0_0_15px_rgba(255,255,255,0.2)] p-[2px]">
+          <div className="h-full rounded-full bg-gradient-to-r from-slate-700 via-blue-800 to-yellow-300 w-0 animate-[fillProgress_2.5s_ease-in-out_forwards]" />
+        </div>
+
+        <div className="bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-700 px-8 py-2 rounded-full text-black font-semibold text-sm md:text-base shadow-xl mb-3 border border-yellow-300/50">
+          Pre-initialization in progress...
+        </div>
+
+        <p className="text-white font-medium text-sm md:text-base tracking-wide drop-shadow-md">
+          Checking System Integrity...
+        </p>
+        */}
+
+        {/* Injecting keyframes for the progress bar directly */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes fillProgress {
+            0% { width: 0%; }
+            100% { width: 95%; }
+          }
+        `}} />
+      </div>
+
+      {/* Login Screen Content */}
+      <div
+        className={`absolute inset-0 z-20 flex items-center justify-center p-4 md:p-12 transition-all duration-1000 ease-out delay-300
+          ${phase === 'login' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}
+        `}
+      >
+        {/* Floating Buses (Right side) */}
+        <div className="absolute top-0 right-0 w-1/3 h-full overflow-hidden pointer-events-none">
+          <svg className="absolute top-[20%] right-[10%] w-24 h-12 text-slate-200/50 animate-[float_6s_ease-in-out_infinite]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 11V8C4 5.79086 5.79086 4 8 4H16C18.2091 4 20 5.79086 20 8V11M4 11H20M4 11V16C4 17.1046 4.89543 18 6 18H7M20 11V16C20 17.1046 19.1046 18 18 18H17M7 18H17M7 18C7 19.6569 8.34315 21 10 21C11.6569 21 13 19.6569 13 18M17 18C17 19.6569 15.6569 21 14 21C12.3431 21 11 19.6569 11 18" stroke="currentColor" strokeWidth="1" fill="none" />
+          </svg>
+          <svg className="absolute top-[40%] right-[25%] w-32 h-16 text-slate-200/60 animate-[float_8s_ease-in-out_infinite_1s]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 11V8C4 5.79086 5.79086 4 8 4H16C18.2091 4 20 5.79086 20 8V11M4 11H20M4 11V16C4 17.1046 4.89543 18 6 18H7M20 11V16C20 17.1046 19.1046 18 18 18H17M7 18H17M7 18C7 19.6569 8.34315 21 10 21C11.6569 21 13 19.6569 13 18M17 18C17 19.6569 15.6569 21 14 21C12.3431 21 11 19.6569 11 18" stroke="currentColor" strokeWidth="1" fill="none" />
+          </svg>
+          <svg className="absolute bottom-[30%] right-[5%] w-20 h-10 text-slate-200/40 animate-[float_7s_ease-in-out_infinite_2s]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 11V8C4 5.79086 5.79086 4 8 4H16C18.2091 4 20 5.79086 20 8V11M4 11H20M4 11V16C4 17.1046 4.89543 18 6 18H7M20 11V16C20 17.1046 19.1046 18 18 18H17M7 18H17M7 18C7 19.6569 8.34315 21 10 21C11.6569 21 13 19.6569 13 18M17 18C17 19.6569 15.6569 21 14 21C12.3431 21 11 19.6569 11 18" stroke="currentColor" strokeWidth="1" fill="none" />
+          </svg>
+        </div>
+
+        {/* Wavy Lines Background (Left Side) */}
+        <div className="absolute top-1/2 -left-20 transform -translate-y-1/2 pointer-events-none opacity-30 mix-blend-overlay">
+          <svg width="400" height="400" viewBox="0 0 400 400" fill="none">
+            <path d="M0 200 Q 100 50 200 200 T 400 200" stroke="white" strokeWidth="2" fill="none" />
+            <path d="M0 220 Q 100 70 200 220 T 400 220" stroke="white" strokeWidth="2" fill="none" />
+            <path d="M0 240 Q 100 90 200 240 T 400 240" stroke="white" strokeWidth="2" fill="none" />
+            <path d="M0 260 Q 100 110 200 260 T 400 260" stroke="white" strokeWidth="2" fill="none" />
+            <path d="M0 180 Q 100 30 200 180 T 400 180" stroke="white" strokeWidth="2" fill="none" />
+          </svg>
+        </div>
+
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+
+          {/* Admin Login Card */}
+          <div
+            onClick={() => router.push('/admin')}
+            className="group relative overflow-hidden bg-slate-900/40 backdrop-blur-md border border-white/20 rounded-[2rem] p-8 md:p-10 cursor-pointer transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl shadow-black/50 h-[380px] flex flex-col justify-between"
+          >
+            {/* Circuit Board Pattern */}
+            <div className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{
+              backgroundImage: 'radial-gradient(circle at 100% 100%, white 2px, transparent 2px), radial-gradient(circle at 0% 0%, white 2px, transparent 2px), linear-gradient(45deg, transparent 48%, white 48%, white 52%, transparent 52%), linear-gradient(-45deg, transparent 48%, white 48%, white 52%, transparent 52%)',
+              backgroundSize: '40px 40px'
+            }}></div>
+            
+            <div className="relative z-10">
+              <div className="w-12 h-12 border border-white/50 rounded-xl flex items-center justify-center mb-8 bg-white/5 backdrop-blur-sm relative">
+                <div className="absolute inset-0 border border-white/20 rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <ShieldCheck className="w-6 h-6 text-white/90" />
+              </div>
+
+              <h2 className="text-3xl font-bold mb-4 tracking-wide drop-shadow-md" style={{ color: '#ecd599' }}>Admin Portal</h2>
+              <p className="text-slate-300 text-sm md:text-base leading-relaxed pr-6 drop-shadow-sm font-medium">
+                Access the central dashboard to monitor fleet, manage routes, and respond to live emergencies.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-blue-400 text-sm font-semibold group-hover:gap-4 transition-all duration-300 relative z-10">
+              <span>Enter Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Parent Login Card */}
+          <div
+            onClick={() => router.push('/parent')}
+            className="group relative overflow-hidden bg-slate-900/40 backdrop-blur-md border border-white/20 rounded-[2rem] p-8 md:p-10 cursor-pointer transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl shadow-black/50 h-[380px] flex flex-col justify-between"
+          >
+            {/* Nodes/Tree Pattern */}
+            <div className="absolute inset-0 opacity-[0.08] pointer-events-none flex items-end justify-end p-4">
+               <svg width="200" height="200" viewBox="0 0 200 200" fill="none">
+                 <circle cx="150" cy="50" r="20" stroke="white" strokeWidth="4" />
+                 <circle cx="150" cy="50" r="8" fill="white" />
+                 <path d="M150 70 V 100 M150 100 L 100 150 M150 100 L 180 130 M100 150 V 180 M180 130 V 180 M100 150 L 70 120" stroke="white" strokeWidth="4" />
+                 <circle cx="100" cy="180" r="10" stroke="white" strokeWidth="3" />
+                 <circle cx="180" cy="180" r="10" stroke="white" strokeWidth="3" />
+                 <circle cx="70" cy="120" r="10" stroke="white" strokeWidth="3" />
+               </svg>
+            </div>
+            
+            <div className="relative z-10">
+              <div className="w-12 h-12 border border-white/50 rounded-xl flex items-center justify-center mb-8 bg-white/5 backdrop-blur-sm relative">
+                <div className="absolute inset-0 border border-white/20 rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <Users className="w-6 h-6 text-white/90" />
+              </div>
+
+              <h2 className="text-3xl font-bold mb-4 tracking-wide drop-shadow-md" style={{ color: '#ecd599' }}>Parent Portal</h2>
+              <p className="text-slate-300 text-sm md:text-base leading-relaxed pr-6 drop-shadow-sm font-medium">
+                Track your child's bus in real-time, view boarding status, and manage notification preferences.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-200 text-sm font-semibold group-hover:gap-4 transition-all duration-300 relative z-10">
+              <span>Enter Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+
+        </div>
+        
+        {/* Float Animation Keyframes */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-20px) translateX(10px); }
+          }
+        `}} />
+      </div>
     </div>
-  );
-}
-
-export default function Page() {
-  return (
-    <AppProvider>
-      <DashboardContainer />
-    </AppProvider>
   );
 }

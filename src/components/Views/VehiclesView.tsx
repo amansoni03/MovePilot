@@ -7,18 +7,21 @@ import {
   Settings, User, Route, Video, AlertCircle, Plus, Info 
 } from 'lucide-react';
 
+import { Edit } from 'lucide-react';
+
 interface VehiclesViewProps {
   onOpenAddVehicle: () => void;
+  onOpenEditVehicle?: (vehicle: Vehicle) => void;
 }
 
-export const VehiclesView: React.FC<VehiclesViewProps> = ({ onOpenAddVehicle }) => {
+export const VehiclesView: React.FC<VehiclesViewProps> = ({ onOpenAddVehicle, onOpenEditVehicle }) => {
   const { vehicles, routes, drivers, changeVehicleStatus, addToast } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const filteredVehicles = vehicles.filter(v => 
-    v.busNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.registrationNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    (v.busNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (v.registrationNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getRouteCode = (routeId: string) => {
@@ -140,11 +143,19 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ onOpenAddVehicle }) 
 
         {/* Selected Vehicle details & Safety compliance - 1 column */}
         <div className="bg-white border border-slate-100 rounded-2xl shadow-xs p-5 space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-600" />
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">Safety compliance</h3>
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Safety Compliance</h3>
             </div>
+            {selectedVehicle && onOpenEditVehicle && (
+              <button
+                onClick={() => onOpenEditVehicle(selectedVehicle)}
+                className="flex items-center gap-1 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" /> Edit Bus
+              </button>
+            )}
           </div>
 
           {selectedVehicle ? (
