@@ -155,8 +155,6 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({ isOpen, onClose })
       return;
     }
 
-    const path = generatePathBetweenStops(stops);
-
     addRoute({
       name: routeName.trim(),
       routeNumber: routeNumber.trim(),
@@ -168,7 +166,6 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({ isOpen, onClose })
       status: 'scheduled',
       departureTime,
       expectedArrivalTime,
-      path,
       stops: stops.map(st => ({
         name: st.name.trim(),
         lat: Number(st.lat),
