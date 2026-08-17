@@ -61,12 +61,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <div className="flex flex-col h-full bg-slate-950 text-slate-400 select-none">
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-900 bg-slate-950">
-        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-slate-950 shadow-inner flex-shrink-0 animate-pulse">
-          <Bus className="w-6 h-6 stroke-[2]" />
-        </div>
+        <img 
+          src="/image1.png" 
+          alt="College Logo" 
+          className="w-10 h-10 rounded-full object-cover shadow-inner flex-shrink-0 border-2 border-slate-800 bg-white" 
+        />
         <div>
-          <h1 className="font-bold text-sm text-white tracking-wide leading-tight">School Transport</h1>
-          <p className="text-[10px] font-semibold text-yellow-400 tracking-widest uppercase">Safety Console</p>
+          <h1 className="font-bold text-sm text-white tracking-wide leading-tight">Safety Console</h1>
+          <p className="text-[10px] font-semibold text-yellow-400 tracking-widest uppercase">Campus Fleet</p>
         </div>
       </div>
 
